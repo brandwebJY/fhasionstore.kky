@@ -369,36 +369,69 @@ el("checkoutForm").addEventListener("submit",async e=>{
 const order = data;
 
 const message = [
-  "🛍️ PESANAN BARU - FASHION STORE PRO",
-  "━━━━━━━━━━━━━━━━",
-  `No. Pesanan: ${order.order_number}`,
-  `Nama: ${form.get("name")}`,
-  `WhatsApp: ${form.get("phone")}`,
-  `Alamat: ${form.get("address")}`,
-  "",
-  "Mohon segera konfirmasi pesanan ini.",
-  `Total: ${rupiah(order.total)}`
-].join("\n");
+ 
+const order = data;
 
-if (!settings.whatsapp) {
+// Ambil rincian produk dari keranjang
+const detailProduk = cart.map((item, index) => {
+  const subtotal = item.price * item.quantity;
+
+  return [
+    `${index + 1}. ${item.name}`,
+    `   ${item.quantity} x ${rupiah(item.price)}`,
+    `   Subtotal: ${rupiah(subtotal)}`
+  ].join("\n");
+}).join("\n\n");
+
+const tanggal = new Date().toLocaleString("id-ID", {
+  timeZone: "Asia/Jakarta",
+  dateStyle: "long",
+  timeStyle: "short"
+});
+
+const message = [
+  `🛍️ *${settings.store_name || "FASHION STORE PRO"}*`,
+  "*STRUK PESANAN ONLINE*",
+  "━━━━━━━━━━━━━━━━━━",
+  "",
+  "📋 *INFORMASI PESANAN*",
+  `No. Pesanan: ${order.order_number}`,
+  `Tanggal    : ${tanggal}`,
+  "Status     : Menunggu Konfirmasi",
+  "",
+  "👤 *DATA PEMBELI*",
+  `Nama       : ${form.get("name")}`,
+  `WhatsApp   : ${form.get("phone")}`,
+  `Alamat     : ${form.get("address")}`,
+  "",
+  "🛒 *RINCIAN BELANJA*",
+  detailProduk,
+  "",
+  "━━━━━━━━━━━━━━━━━━",
+  `💰 *TOTAL: ${rupiah(order.total)}*`,
+  "━━━━━━━━━━━━━━━━━━",
+  "",
+  form.get("notes")
+    ? `📝 Catatan: ${form.get("notes")}`
+    : "",
+  "",
+  "Terima kasih telah berbelanja ❤️",
+  "Mohon segera konfirmasi pesanan ini."
+].filter(Boolean).join("\n");
+
+const phone = (settings.whatsapp || "").replace(/\D/g, "");
+
+if (!phone) {
   throw new Error("Nomor WhatsApp admin belum diatur.");
 }
 
-const phone = settings.whatsapp.replace(/\D/g, "");
+const waUrl =
+  "https://wa.me/" + phone + "?text=" +
+  encodeURIComponent(message);
 
-window.open(
-  "https://wa.me/" + phone + "?text=" + encodeURIComponent(message),
-  "_blank"
-);
-    const message=[
-      `Halo ${settings.store_name||"Fashion Store"}, saya ingin konfirmasi pesanan.`,
-      `Nomor pesanan: ${order.order_number}`,
-      `Nama: ${form.get("name")}`,
-      `WhatsApp: ${form.get("phone")}`,
-      `Alamat: ${form.get("address")}`,
-      `Total: ${rupiah(order.total)}`,
-      `Mohon informasi pembayaran dan pengiriman.`
-    ].join("\n");
+// Buka WhatsApp admin
+window.open(waUrl, "_blank");
+
 
     cart=[];saveCart();e.target.reset();
     await loadStore();
