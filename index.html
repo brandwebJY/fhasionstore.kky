@@ -366,11 +366,8 @@ el("checkoutForm").addEventListener("submit",async e=>{
     if(error)throw error;
 
     const order=data;
-const order = data;
-
-const message = [
- 
-const order = data;
+    
+   order = data;
 
 // Ambil rincian produk dari keranjang
 const detailProduk = cart.map((item, index) => {
@@ -431,7 +428,6 @@ const waUrl =
 
 // Buka WhatsApp admin
 window.open(waUrl, "_blank");
-
 
     cart=[];saveCart();e.target.reset();
     await loadStore();
