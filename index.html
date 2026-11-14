@@ -366,6 +366,21 @@ el("checkoutForm").addEventListener("submit",async e=>{
     if(error)throw error;
 
     const order=data;
+   // Kirim struk otomatis ke WhatsApp admin
+const { data: waData, error: waError } =
+  await db.functions.invoke("notify-admin-whatsapp", {
+    body: {
+      order_number: order.order_number
+    }
+  });
+
+if (waError) {
+  console.error("Gagal mengirim WhatsApp otomatis:", waError);
+} else if (!waData?.ok) {
+  console.error("WhatsApp gagal:", waData?.error);
+} else {
+  console.log("Struk berhasil dikirim ke WhatsApp admin.");
+}
     const message=[
       `Halo ${settings.store_name||"Fashion Store"}, saya ingin konfirmasi pesanan.`,
       `Nomor pesanan: ${order.order_number}`,
