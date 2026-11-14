@@ -365,10 +365,8 @@ el("checkoutForm").addEventListener("submit",async e=>{
     });
     if(error)throw error;
 
-    const order=data;
-    
-   order = data;
-
+   const order=data;
+  
 // Ambil rincian produk dari keranjang
 const detailProduk = cart.map((item, index) => {
   const subtotal = item.price * item.quantity;
