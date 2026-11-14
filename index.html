@@ -349,98 +349,114 @@ function renderCart(){
   el("cartTotal").textContent=rupiah(cartTotal());
 }
 
+
 el("checkoutForm").addEventListener("submit",async e=>{
   e.preventDefault();
-  if(!requireConfig()||!cart.length)return;
+
+  if(!requireConfig() || !cart.length)return;
+
   const form=new FormData(e.target);
   const button=el("checkoutButton");
-  button.disabled=true;button.textContent="Memproses...";
+
+  button.disabled=true;
+  button.textContent="Memproses...";
+
   try{
     const {data,error}=await db.rpc("create_order",{
       p_customer_name:form.get("name"),
       p_customer_phone:form.get("phone"),
       p_customer_address:form.get("address"),
       p_notes:form.get("notes"),
-      p_items:cart.map(i=>({product_id:i.id,quantity:i.quantity}))
+      p_items:cart.map(i=>({
+        product_id:i.id,
+        quantity:i.quantity
+      }))
     });
+
     if(error)throw error;
 
-   const order=data;
-  
-// Ambil rincian produk dari keranjang
-const detailProduk = cart.map((item, index) => {
-  const subtotal = item.price * item.quantity;
+    const order=data;
 
-  return [
-    `${index + 1}. ${item.name}`,
-    `   ${item.quantity} x ${rupiah(item.price)}`,
-    `   Subtotal: ${rupiah(subtotal)}`
-  ].join("\n");
-}).join("\n\n");
+    // Rincian produk
+    const detailProduk=cart.map((item,index)=>{
+      const subtotal=item.price*item.quantity;
 
-const tanggal = new Date().toLocaleString("id-ID", {
-  timeZone: "Asia/Jakarta",
-  dateStyle: "long",
-  timeStyle: "short"
-});
+      return [
+        `${index+1}. ${item.name}`,
+        `   ${item.quantity} x ${rupiah(item.price)}`,
+        `   Subtotal: ${rupiah(subtotal)}`
+      ].join("\n");
+    }).join("\n\n");
 
-const message = [
-  `🛍️ *${settings.store_name || "FASHION STORE PRO"}*`,
-  "*STRUK PESANAN ONLINE*",
-  "━━━━━━━━━━━━━━━━━━",
-  "",
-  "📋 *INFORMASI PESANAN*",
-  `No. Pesanan: ${order.order_number}`,
-  `Tanggal    : ${tanggal}`,
-  "Status     : Menunggu Konfirmasi",
-  "",
-  "👤 *DATA PEMBELI*",
-  `Nama       : ${form.get("name")}`,
-  `WhatsApp   : ${form.get("phone")}`,
-  `Alamat     : ${form.get("address")}`,
-  "",
-  "🛒 *RINCIAN BELANJA*",
-  detailProduk,
-  "",
-  "━━━━━━━━━━━━━━━━━━",
-  `💰 *TOTAL: ${rupiah(order.total)}*`,
-  "━━━━━━━━━━━━━━━━━━",
-  "",
-  form.get("notes")
-    ? `📝 Catatan: ${form.get("notes")}`
-    : "",
-  "",
-  "Terima kasih telah berbelanja ❤️",
-  "Mohon segera konfirmasi pesanan ini."
-].filter(Boolean).join("\n");
+    // Tanggal pesanan
+    const tanggal=new Date().toLocaleString("id-ID",{
+      timeZone:"Asia/Jakarta",
+      dateStyle:"long",
+      timeStyle:"short"
+    });
 
-const phone = (settings.whatsapp || "").replace(/\D/g, "");
+    // Nomor WhatsApp admin
+    const nomorAdmin=(settings.whatsapp||"").replace(/\D/g,"");
 
-if (!phone) {
-  throw new Error("Nomor WhatsApp admin belum diatur.");
-}
-
-const waUrl =
-  "https://wa.me/" + phone + "?text=" +
-  encodeURIComponent(message);
-
-// Buka WhatsApp admin
-window.open(waUrl, "_blank");
-
-    cart=[];saveCart();e.target.reset();
-    await loadStore();
-    notify("Pesanan berhasil dibuat. Anda akan diarahkan ke WhatsApp.");
-    if(settings.whatsapp){
-      const phone=settings.whatsapp.replace(/\D/g,"");
-      window.open("https://wa.me/"+phone+"?text="+encodeURIComponent(message),"_blank");
-    }else{
-      notify("Nomor WhatsApp toko belum diatur. Nomor pesanan: "+order.order_number);
+    if(!nomorAdmin){
+      throw new Error(
+        "Nomor WhatsApp admin belum diatur. Silakan isi melalui Pengaturan Toko."
+      );
     }
+
+    // Isi struk WhatsApp
+    const message=[
+      `🛍️ *${settings.store_name||"FASHION STORE PRO"}*`,
+      "*STRUK PESANAN ONLINE*",
+      "━━━━━━━━━━━━━━━━━━",
+      "",
+      "📋 *INFORMASI PESANAN*",
+      `No. Pesanan: ${order.order_number}`,
+      `Tanggal: ${tanggal}`,
+      "Status: Menunggu Konfirmasi",
+      "",
+      "👤 *DATA PEMBELI*",
+      `Nama: ${form.get("name")}`,
+      `WhatsApp: ${form.get("phone")}`,
+      `Alamat: ${form.get("address")}`,
+      "",
+      "🛒 *RINCIAN BELANJA*",
+      detailProduk,
+      "",
+      "━━━━━━━━━━━━━━━━━━",
+      `💰 *TOTAL: ${rupiah(order.total)}*`,
+      "━━━━━━━━━━━━━━━━━━",
+      form.get("notes")
+        ? `📝 Catatan: ${form.get("notes")}`
+        : "",
+      "",
+      "Terima kasih telah berbelanja ❤️",
+      "Mohon segera konfirmasi pesanan ini."
+    ].filter(Boolean).join("\n");
+
+    // Kosongkan keranjang
+    cart=[];
+    saveCart();
+    e.target.reset();
+
+    // Buka WhatsApp admin satu kali
+    const waUrl=
+      "https://wa.me/"+nomorAdmin+
+      "?text="+encodeURIComponent(message);
+
+    window.open(waUrl,"_blank");
+
+    await loadStore();
+
+    notify("Pesanan berhasil dibuat. Silakan tekan tombol Kirim di WhatsApp.");
+
     showStore();
+
   }catch(err){
     notify("Checkout gagal: "+(err.message||"Terjadi kesalahan"));
   }finally{
-    button.disabled=false;button.textContent="Buat Pesanan & WhatsApp";
+    button.disabled=false;
+    button.textContent="Buat Pesanan & WhatsApp";
   }
 });
 
