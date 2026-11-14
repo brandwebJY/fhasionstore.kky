@@ -366,30 +366,21 @@ el("checkoutForm").addEventListener("submit",async e=>{
     if(error)throw error;
 
     const order=data;
-   const order = data;
+ // Kirim struk otomatis ke WhatsApp admin
+const { data: waData, error: waError } =
+  await db.functions.invoke("notify-admin-whatsapp", {
+    body: {
+      order_number: order.order_number
+    }
+  });
 
-const message = [
-  "🛍️ PESANAN BARU - FASHION STORE PRO",
-  "━━━━━━━━━━━━━━━━",
-  `No. Pesanan: ${order.order_number}`,
-  `Nama: ${form.get("name")}`,
-  `WhatsApp: ${form.get("phone")}`,
-  `Alamat: ${form.get("address")}`,
-  "",
-  "Mohon segera konfirmasi pesanan ini.",
-  `Total: ${rupiah(order.total)}`
-].join("\n");
-
-if (!settings.whatsapp) {
-  throw new Error("Nomor WhatsApp admin belum diatur.");
+if (waError) {
+  console.error("Gagal mengirim WhatsApp otomatis:", waError);
+} else if (!waData?.ok) {
+  console.error("WhatsApp gagal:", waData?.error);
+} else {
+  console.log("Struk berhasil dikirim ke WhatsApp admin.");
 }
-
-const phone = settings.whatsapp.replace(/\D/g, "");
-
-window.open(
-  "https://wa.me/" + phone + "?text=" + encodeURIComponent(message),
-  "_blank"
-);
     const message=[
       `Halo ${settings.store_name||"Fashion Store"}, saya ingin konfirmasi pesanan.`,
       `Nomor pesanan: ${order.order_number}`,
