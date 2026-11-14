@@ -1,0 +1,583 @@
+
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>FASHION STORE PRO</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+:root{--black:#111;--gold:#c8a45d;--cream:#f8f6f1;--white:#fff;--gray:#777}
+*{box-sizing:border-box}
+body{margin:0;font-family:Arial,sans-serif;background:var(--cream);color:var(--black)}
+button,input,textarea,select{font:inherit}
+button{cursor:pointer;border:0}
+header{background:#111;color:white;padding:17px 5%;display:flex;align-items:center;justify-content:space-between;gap:15px;flex-wrap:wrap}
+.logo{font-size:21px;font-weight:bold;letter-spacing:2px}
+.logo span{color:var(--gold)}
+nav{display:flex;gap:10px;align-items:center}
+.btn{background:var(--gold);color:#111;padding:11px 16px;border-radius:4px;font-weight:bold}
+.btn.dark{background:#222;color:white}
+.btn.outline{background:transparent;color:var(--gold);border:1px solid var(--gold)}
+.container{max-width:1200px;margin:auto;padding:30px 5%}
+.hero{background:#181818;color:white;padding:65px 7%;margin-bottom:30px}
+.hero h1{font-size:clamp(32px,6vw,58px);margin:0 0 12px}
+.hero p{color:#ccc;max-width:520px;line-height:1.7}
+.gold{color:var(--gold)}
+.section-title{display:flex;justify-content:space-between;align-items:center;gap:15px;flex-wrap:wrap;margin:25px 0}
+.filters{display:flex;gap:10px;flex-wrap:wrap}
+input,textarea,select{width:100%;padding:12px;border:1px solid #ddd;border-radius:4px;background:white}
+.filters input{width:min(260px,100%)}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:20px}
+.product{background:white;border:1px solid #eee;border-radius:5px;overflow:hidden}
+.product img{width:100%;height:250px;object-fit:cover;background:#eee}
+.product-info{padding:15px}
+.product-info h3{margin:5px 0 8px}
+.price{font-weight:bold;color:#9b762f;font-size:18px}
+.muted{color:var(--gray);font-size:13px}
+.product-info button{width:100%;margin-top:12px}
+.panel{background:white;border:1px solid #eee;border-radius:6px;padding:20px;margin:18px 0}
+.hidden{display:none!important}
+.form-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.form-grid .full{grid-column:1/-1}
+label{display:block;font-size:13px;font-weight:bold;margin-bottom:6px}
+.field{margin-bottom:12px}
+.cart-row{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:12px 0;border-bottom:1px solid #eee}
+.qty{display:flex;align-items:center;gap:8px}
+.qty button{background:#eee;padding:6px 10px}
+.table-wrap{overflow-x:auto}
+table{width:100%;border-collapse:collapse;min-width:600px}
+th,td{text-align:left;padding:12px;border-bottom:1px solid #eee;font-size:14px}
+th{background:#f5f2eb}
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+.stat{background:#171717;color:white;padding:20px;border-radius:5px}
+.stat strong{display:block;font-size:25px;color:var(--gold);margin-top:8px}
+footer{text-align:center;background:#111;color:#aaa;padding:25px;margin-top:50px}
+.notice{padding:12px;background:#f4eddd;border-left:4px solid var(--gold);margin:12px 0}
+.actions{display:flex;gap:8px;flex-wrap:wrap}
+@media(max-width:650px){
+ .form-grid,.stats{grid-template-columns:1fr}
+ header{padding:15px}
+ .hero{padding:40px 7%}
+ .product img{height:220px}
+}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">FASHION <span>STORE PRO</span></div>
+  <nav>
+    <button class="btn dark" onclick="showStore()">Beranda</button>
+    <button class="btn" onclick="showCart()">Keranjang (<span id="cartCount">0</span>)</button>
+    <button class="btn outline" onclick="showAdmin()">Admin</button>
+  </nav>
+</header>
+
+<main id="storeView">
+  <section class="hero">
+    <p class="gold">STYLE • QUALITY • CONFIDENCE</p>
+    <h1>Temukan Gaya<br><span class="gold">Terbaikmu.</span></h1>
+    <p>Koleksi fashion pilihan untuk melengkapi penampilan Anda. Belanja mudah, nyaman, dan langsung konfirmasi melalui WhatsApp.</p>
+    <button class="btn" onclick="document.getElementById('catalog').scrollIntoView()">BELANJA SEKARANG</button>
+  </section>
+
+  <section class="container" id="catalog">
+    <div class="section-title">
+      <div><h2>Koleksi Produk</h2><p class="muted">Temukan produk favorit Anda</p></div>
+      <div class="filters">
+        <input id="search" placeholder="Cari produk..." oninput="renderProducts()">
+        <select id="category" onchange="renderProducts()"><option value="">Semua kategori</option></select>
+      </div>
+    </div>
+    <div id="productGrid" class="grid"></div>
+  </section>
+</main>
+
+<section id="cartView" class="container hidden">
+  <h2>Keranjang Belanja</h2>
+  <div class="panel">
+    <div id="cartItems"></div>
+    <div class="section-title">
+      <strong>Total Belanja</strong>
+      <strong class="price" id="cartTotal">Rp0</strong>
+    </div>
+    <button class="btn" onclick="showCheckout()">Lanjut Checkout</button>
+    <button class="btn dark" onclick="showStore()">Lanjut Belanja</button>
+  </div>
+</section>
+
+<section id="checkoutView" class="container hidden">
+  <h2>Checkout Pesanan</h2>
+  <div class="panel">
+    <form id="checkoutForm">
+      <div class="field"><label>Nama lengkap</label><input name="name" required minlength="2"></div>
+      <div class="field"><label>Nomor WhatsApp</label><input name="phone" required placeholder="Contoh: 081234567890"></div>
+      <div class="field"><label>Alamat pengiriman</label><textarea name="address" rows="3" required></textarea></div>
+      <div class="field"><label>Catatan pesanan (opsional)</label><textarea name="notes" rows="2"></textarea></div>
+      <div class="notice">Pesanan akan disimpan ke database. Konfirmasi selanjutnya dilakukan melalui WhatsApp toko.</div>
+      <h3 id="checkoutTotal"></h3>
+      <button class="btn" type="submit" id="checkoutButton">Buat Pesanan & WhatsApp</button>
+      <button class="btn dark" type="button" onclick="showCart()">Kembali</button>
+    </form>
+  </div>
+</section>
+
+<section id="adminView" class="container hidden">
+  <div id="loginPanel" class="panel">
+    <h2>Login Administrator</h2>
+    <p class="muted">Masuk menggunakan akun admin Supabase.</p>
+    <form id="loginForm">
+      <div class="field"><label>Email</label><input name="email" type="email" required></div>
+      <div class="field"><label>Password</label><input name="password" type="password" required></div>
+      <button class="btn" type="submit">Login Admin</button>
+    </form>
+    <p id="loginMessage" class="muted"></p>
+  </div>
+
+  <div id="dashboard" class="hidden">
+    <div class="section-title">
+      <div><h2>Dashboard Admin</h2><p class="muted">Kelola toko dan pesanan Anda</p></div>
+      <button class="btn dark" onclick="logoutAdmin()">Logout</button>
+    </div>
+
+    <div class="stats">
+      <div class="stat">Total Pesanan<strong id="statOrders">0</strong></div>
+      <div class="stat">Pesanan Selesai<strong id="statCompleted">0</strong></div>
+      <div class="stat">Omzet Selesai<strong id="statRevenue">Rp0</strong></div>
+    </div>
+
+    <div class="panel">
+      <h3>Pengaturan Toko</h3>
+      <form id="settingsForm">
+        <div class="form-grid">
+          <div class="field"><label>Nama toko</label><input name="store_name" required></div>
+          <div class="field"><label>Nomor WhatsApp toko</label><input name="whatsapp" placeholder="628123456789"></div>
+        </div>
+        <button class="btn" type="submit">Simpan Pengaturan</button>
+      </form>
+    </div>
+
+    <div class="panel">
+      <h3>Tambah / Edit Produk</h3>
+      <form id="productForm">
+        <input type="hidden" name="id">
+        <div class="form-grid">
+          <div class="field"><label>Nama produk</label><input name="name" required></div>
+          <div class="field"><label>Kategori</label><input name="category" required placeholder="Pria, Wanita, Aksesoris"></div>
+          <div class="field"><label>Harga (Rp)</label><input name="price" type="number" min="0" required></div>
+          <div class="field"><label>Stok</label><input name="stock" type="number" min="0" required></div>
+          <div class="field full"><label>Deskripsi</label><textarea name="description" rows="2"></textarea></div>
+          <div class="field full"><label>Foto produk</label><input name="image" type="file" accept="image/*"></div>
+        </div>
+        <button class="btn" type="submit">Simpan Produk</button>
+        <button class="btn dark" type="button" onclick="resetProductForm()">Kosongkan</button>
+        <p id="productMessage" class="muted"></p>
+      </form>
+    </div>
+
+    <div class="panel">
+      <h3>Daftar Produk</h3>
+      <div class="table-wrap"><table>
+        <thead><tr><th>Produk</th><th>Harga</th><th>Stok</th><th>Aksi</th></tr></thead>
+        <tbody id="adminProducts"></tbody>
+      </table></div>
+    </div>
+
+    <div class="panel">
+      <h3>Laporan Pesanan</h3>
+      <div class="table-wrap"><table>
+        <thead><tr><th>No. Pesanan</th><th>Pelanggan</th><th>Total</th><th>Status</th><th>Tanggal</th><th>Aksi</th></tr></thead>
+        <tbody id="adminOrders"></tbody>
+      </table></div>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="logo">FASHION <span>STORE PRO</span></div>
+  <p>© <span id="year"></span> Fashion Store Pro. All rights reserved.</p>
+</footer>
+
+<script>
+/* =====================================================
+   KONFIGURASI SUPABASE
+   Ganti dua nilai berikut dengan milik proyek Anda.
+   Gunakan publishable/anon key, JANGAN service_role.
+===================================================== */
+const SUPABASE_URL = "https://xevihbigrjzhnjvdrbnw.supabase.co";
+const SUPABASE_KEY = "sb_publishable_RKzxlFK2jBXUR_nVVk3ODA_YC9TWO2A";
+
+const configured =
+  SUPABASE_URL.startsWith("https://") &&
+  !SUPABASE_URL.includes("MASUKKAN_") &&
+  !SUPABASE_KEY.includes("MASUKKAN_");
+
+const db = configured
+  ? window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY)
+  : null;
+
+let products = [];
+let cart = JSON.parse(localStorage.getItem("fsp_cart") || "[]");
+let currentUser = null;
+let settings = {store_name:"FASHION STORE PRO",whatsapp:""};
+
+const rupiah = n => new Intl.NumberFormat("id-ID",{
+  style:"currency",currency:"IDR",maximumFractionDigits:0
+}).format(Number(n || 0));
+
+const el = id => document.getElementById(id);
+const escapeHTML = value => String(value ?? "").replace(/[&<>"']/g,c=>({
+  "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"
+}[c]));
+
+function notify(message){ alert(message); }
+
+function requireConfig(){
+  if(!db){
+    notify("Konfigurasi Supabase belum diisi. Silakan isi SUPABASE_URL dan SUPABASE_KEY di index.html.");
+    return false;
+  }
+  return true;
+}
+
+function showView(id){
+  ["storeView","cartView","checkoutView","adminView"].forEach(v=>el(v).classList.add("hidden"));
+  el(id).classList.remove("hidden");
+  window.scrollTo(0,0);
+}
+function showStore(){showView("storeView");}
+function showCart(){renderCart();showView("cartView");}
+function showCheckout(){
+  if(!cart.length){notify("Keranjang masih kosong.");return;}
+  el("checkoutTotal").textContent="Total: "+rupiah(cartTotal());
+  showView("checkoutView");
+}
+function showAdmin(){showView("adminView");}
+
+function saveCart(){
+  localStorage.setItem("fsp_cart",JSON.stringify(cart));
+  el("cartCount").textContent=cart.reduce((s,i)=>s+i.quantity,0);
+}
+function cartTotal(){return cart.reduce((s,i)=>s+i.price*i.quantity,0);}
+
+async function loadStore(){
+  if(!requireConfig())return;
+  const [p,s]=await Promise.all([
+    db.from("products").select("*").eq("active",true).order("created_at",{ascending:false}),
+    db.from("store_settings").select("*").eq("id",1).maybeSingle()
+  ]);
+  if(p.error){notify(p.error.message);return;}
+  products=p.data||[];
+  if(s.data)settings=s.data;
+  document.title=settings.store_name||"FASHION STORE PRO";
+  el("productGrid").innerHTML="";
+  populateCategories();
+  renderProducts();
+  saveCart();
+}
+
+function populateCategories(){
+  const select=el("category");
+  const old=select.value;
+  const cats=[...new Set(products.map(p=>p.category).filter(Boolean))];
+  select.innerHTML='<option value="">Semua kategori</option>'+
+    cats.map(c=>`<option value="${escapeHTML(c)}">${escapeHTML(c)}</option>`).join("");
+  select.value=old;
+}
+
+function renderProducts(){
+  const q=el("search").value.toLowerCase();
+  const cat=el("category").value;
+  const list=products.filter(p=>
+    (p.name||"").toLowerCase().includes(q) &&
+    (!cat||p.category===cat)
+  );
+  el("productGrid").innerHTML=list.length?list.map(p=>`
+    <article class="product">
+      <img src="${escapeHTML(p.image_url||"https://placehold.co/600x600?text=Fashion")}" alt="${escapeHTML(p.name)}">
+      <div class="product-info">
+        <div class="muted">${escapeHTML(p.category||"Fashion")}</div>
+        <h3>${escapeHTML(p.name)}</h3>
+        <p class="muted">${escapeHTML(p.description||"")}</p>
+        <div class="price">${rupiah(p.price)}</div>
+        <p class="muted">Stok: ${Number(p.stock)}</p>
+        <button class="btn" ${p.stock<=0?"disabled":""} onclick="addCart('${p.id}')">
+          ${p.stock<=0?"Stok Habis":"Tambah ke Keranjang"}
+        </button>
+      </div>
+    </article>`).join(""):"<p>Produk belum tersedia.</p>";
+}
+
+function addCart(id){
+  const p=products.find(x=>x.id===id);
+  if(!p||p.stock<=0)return;
+  const item=cart.find(x=>x.id===id);
+  if(item){
+    if(item.quantity>=p.stock){notify("Jumlah melebihi stok.");return;}
+    item.quantity++;
+  }else{
+    cart.push({id:p.id,name:p.name,price:Number(p.price),quantity:1,stock:p.stock});
+  }
+  saveCart();notify("Produk ditambahkan ke keranjang.");
+}
+
+function changeQty(id,delta){
+  const item=cart.find(x=>x.id===id);
+  if(!item)return;
+  item.quantity+=delta;
+  if(item.quantity<=0)cart=cart.filter(x=>x.id!==id);
+  else if(item.quantity>item.stock){item.quantity=item.stock;notify("Jumlah melebihi stok.");}
+  saveCart();renderCart();
+}
+
+function removeCart(id){
+  cart=cart.filter(x=>x.id!==id);saveCart();renderCart();
+}
+
+function renderCart(){
+  el("cartItems").innerHTML=cart.length?cart.map(i=>`
+    <div class="cart-row">
+      <div><strong>${escapeHTML(i.name)}</strong><br><span class="muted">${rupiah(i.price)} / item</span></div>
+      <div class="qty">
+        <button onclick="changeQty('${i.id}',-1)">−</button>
+        <strong>${i.quantity}</strong>
+        <button onclick="changeQty('${i.id}',1)">+</button>
+     	<button onclick="removeCart('${i.id}')">Hapus</button>
+      </div>
+    </div>`).join(""):"Keranjang Anda masih kosong.";
+  el("cartTotal").textContent=rupiah(cartTotal());
+}
+
+el("checkoutForm").addEventListener("submit",async e=>{
+  e.preventDefault();
+  if(!requireConfig()||!cart.length)return;
+  const form=new FormData(e.target);
+  const button=el("checkoutButton");
+  button.disabled=true;button.textContent="Memproses...";
+  try{
+    const {data,error}=await db.rpc("create_order",{
+      p_customer_name:form.get("name"),
+      p_customer_phone:form.get("phone"),
+      p_customer_address:form.get("address"),
+      p_notes:form.get("notes"),
+      p_items:cart.map(i=>({product_id:i.id,quantity:i.quantity}))
+    });
+    if(error)throw error;
+
+    const order=data;
+    const message=[
+      `Halo ${settings.store_name||"Fashion Store"}, saya ingin konfirmasi pesanan.`,
+      `Nomor pesanan: ${order.order_number}`,
+      `Nama: ${form.get("name")}`,
+      `WhatsApp: ${form.get("phone")}`,
+      `Alamat: ${form.get("address")}`,
+      `Total: ${rupiah(order.total)}`,
+      `Mohon informasi pembayaran dan pengiriman.`
+    ].join("\n");
+
+    cart=[];saveCart();e.target.reset();
+    await loadStore();
+    notify("Pesanan berhasil dibuat. Anda akan diarahkan ke WhatsApp.");
+    if(settings.whatsapp){
+      const phone=settings.whatsapp.replace(/\D/g,"");
+      window.open("https://wa.me/"+phone+"?text="+encodeURIComponent(message),"_blank");
+    }else{
+      notify("Nomor WhatsApp toko belum diatur. Nomor pesanan: "+order.order_number);
+    }
+    showStore();
+  }catch(err){
+    notify("Checkout gagal: "+(err.message||"Terjadi kesalahan"));
+  }finally{
+    button.disabled=false;button.textContent="Buat Pesanan & WhatsApp";
+  }
+});
+
+/* ---------------- ADMIN ---------------- */
+
+async function checkAdmin(){
+  if(!requireConfig())return false;
+  const {data:{session}}=await db.auth.getSession();
+  if(!session)return false;
+  const {data,error}=await db.from("profiles").select("role").eq("id",session.user.id).maybeSingle();
+  if(error||data?.role!=="admin")return false;
+  currentUser=session.user;
+  return true;
+}
+
+el("loginForm").addEventListener("submit",async e=>{
+  e.preventDefault();
+  if(!requireConfig())return;
+  const f=new FormData(e.target);
+  el("loginMessage").textContent="Memeriksa akun...";
+  const {error}=await db.auth.signInWithPassword({
+    email:f.get("email"),password:f.get("password")
+  });
+  if(error){el("loginMessage").textContent=error.message;return;}
+  if(!await checkAdmin()){
+    await db.auth.signOut();
+    el("loginMessage").textContent="Akun ini tidak memiliki akses administrator.";
+    return;
+  }
+  await openDashboard();
+});
+
+async function showAdmin(){
+  showView("adminView");
+  el("loginPanel").classList.remove("hidden");
+  el("dashboard").classList.add("hidden");
+  if(await checkAdmin())await openDashboard();
+}
+
+async function openDashboard(){
+  el("loginPanel").classList.add("hidden");
+  el("dashboard").classList.remove("hidden");
+  await Promise.all([loadAdminProducts(),loadOrders(),loadSettings()]);
+}
+
+async function logoutAdmin(){
+  if(db)await db.auth.signOut();
+  currentUser=null;showAdmin();
+}
+
+async function loadSettings(){
+  const {data,error}=await db.from("store_settings").select("*").eq("id",1).single();
+  if(error){notify(error.message);return;}
+  settings=data;
+  const f=el("settingsForm");
+  f.elements.store_name.value=data.store_name||"";
+  f.elements.whatsapp.value=data.whatsapp||"";
+}
+
+el("settingsForm").addEventListener("submit",async e=>{
+  e.preventDefault();
+  const f=new FormData(e.target);
+  const {error}=await db.from("store_settings").upsert({
+    id:1,store_name:f.get("store_name"),whatsapp:f.get("whatsapp")
+  });
+  if(error)notify(error.message);
+  else{notify("Pengaturan berhasil disimpan.");await loadSettings();}
+});
+
+async function loadAdminProducts(){
+  const {data,error}=await db.from("products").select("*").order("created_at",{ascending:false});
+  if(error){notify(error.message);return;}
+  el("adminProducts").innerHTML=(data||[]).map(p=>`
+    <tr>
+      <td>${escapeHTML(p.name)}<br><small>${escapeHTML(p.category||"")}</small></td>
+      <td>${rupiah(p.price)}</td>
+      <td>${p.stock}</td>
+      <td><div class="actions">
+        <button class="btn" onclick="editProduct('${p.id}')">Edit</button>
+        <button class="btn dark" onclick="deleteProduct('${p.id}')">Hapus</button>
+      </div></td>
+    </tr>`).join("");
+}
+
+async function editProduct(id){
+  const {data,error}=await db.from("products").select("*").eq("id",id).single();
+  if(error){notify(error.message);return;}
+  const f=el("productForm");
+  ["id","name","category","price","stock","description"].forEach(k=>f.elements[k].value=data[k]??"");
+  f.scrollIntoView({behavior:"smooth"});
+}
+
+function resetProductForm(){el("productForm").reset();el("productForm").elements.id.value="";}
+
+el("productForm").addEventListener("submit",async e=>{
+  e.preventDefault();
+  const f=e.target,fd=new FormData(f);
+  const id=fd.get("id");
+  let imageUrl="";
+  const file=f.elements.image.files[0];
+
+  try{
+    if(file){
+      if(!file.type.startsWith("image/"))throw new Error("File harus berupa gambar.");
+      if(file.size>5*1024*1024)throw new Error("Ukuran foto maksimal 5 MB.");
+      const ext=file.name.split(".").pop().toLowerCase();
+      const path=crypto.randomUUID()+"."+ext;
+      const {error:uploadError}=await db.storage.from("product-images").upload(path,file,{upsert:false});
+      if(uploadError)throw uploadError;
+      const {data}=db.storage.from("product-images").getPublicUrl(path);
+      imageUrl=data.publicUrl;
+    }
+
+    const payload={
+      name:fd.get("name"),
+      category:fd.get("category"),
+      price:Number(fd.get("price")),
+      stock:Number(fd.get("stock")),
+      description:fd.get("description"),
+      active:true
+    };
+    if(imageUrl)payload.image_url=imageUrl;
+
+    let result;
+    if(id)result=await db.from("products").update(payload).eq("id",id);
+    else{
+      if(!imageUrl)payload.image_url="";
+      result=await db.from("products").insert(payload);
+    }
+    if(result.error)throw result.error;
+    el("productMessage").textContent="Produk berhasil disimpan.";
+    resetProductForm();
+    await Promise.all([loadAdminProducts(),loadStore()]);
+  }catch(err){
+    el("productMessage").textContent=err.message;
+  }
+});
+
+async function deleteProduct(id){
+  if(!confirm("Yakin ingin menghapus produk ini?"))return;
+  const {error}=await db.from("products").update({active:false}).eq("id",id);
+  if(error)notify(error.message);
+  else{notify("Produk dinonaktifkan.");await Promise.all([loadAdminProducts(),loadStore()]);}
+}
+
+async function loadOrders(){
+  const {data,error}=await db.from("orders").select("*").order("created_at",{ascending:false});
+  if(error){notify(error.message);return;}
+  const orders=data||[];
+  const completed=orders.filter(o=>o.status==="Selesai");
+  el("statOrders").textContent=orders.length;
+  el("statCompleted").textContent=completed.length;
+  el("statRevenue").textContent=rupiah(completed.reduce((s,o)=>s+Number(o.total),0));
+
+  el("adminOrders").innerHTML=orders.map(o=>`
+    <tr>
+      <td>${escapeHTML(o.order_number)}</td>
+      <td>${escapeHTML(o.customer_name)}<br><small>${escapeHTML(o.customer_phone)}</small></td>
+      <td>${rupiah(o.total)}</td>
+      <td>
+        <select onchange="updateOrderStatus('${o.id}',this.value)">
+          ${["Menunggu Konfirmasi","Diproses","Dikirim","Selesai","Dibatalkan"].map(s=>
+            `<option ${o.status===s?"selected":""}>${s}</option>`).join("")}
+        </select>
+      </td>
+      <td>${new Date(o.created_at).toLocaleDateString("id-ID")}</td>
+      <td><button class="btn dark" onclick="orderDetail('${o.id}')">Detail</button></td>
+    </tr>`).join("");
+}
+
+async function updateOrderStatus(id,status){
+  const {error}=await db.from("orders").update({status}).eq("id",id);
+  if(error)notify(error.message);
+  else await loadOrders();
+}
+
+async function orderDetail(id){
+  const {data,error}=await db.from("order_items").select("*").eq("order_id",id);
+  if(error){notify(error.message);return;}
+  const lines=(data||[]).map(i=>
+    `${i.product_name} x ${i.quantity} = ${rupiah(i.subtotal)}`
+  ).join("\n");
+  notify("DETAIL PESANAN\n\n"+lines);
+}
+
+el("year").textContent=new Date().getFullYear();
+saveCart();
+loadStore();
+</script>
+</body>
+</html>
